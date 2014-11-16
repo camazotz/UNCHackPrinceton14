@@ -65,9 +65,11 @@
        $upvote = $body->{'Upvote'};
        $type = $body->{'Type'};
        $caption = $body->{'Caption'};
+       $username = $body->{'Username'};
 
-       $checkifPresent = "SELECT Link FROM savedfiles WHERE Link = '$linkValue'";
+       $checkifPresent = "SELECT * FROM savedfiles WHERE Link = '$linkValue'";
        $checkifPresentQuery = mysqli_query($con, $checkifPresent);
+       $rowCheckifPresentQuery = $checkifPresentQuery->fetch_array();
 
        if ($checkifPresentQuery->num_rows != 0)
        {
@@ -78,6 +80,24 @@
           {
             die('Error: ' . mysqli_error($con));
           }
+
+          $getfileid = $rowCheckifPresentQuery[1];
+
+          $getuserid = "SELECT id FROM Users WHERE Username = '$username'";
+          $getuseridQuery = mysqli_query($con, $getuserid);
+          $rowGetuseridQuery = $getuseridQuery->fetch_array();
+
+          if ($getuseridQuery->num_rows != 0)
+          {
+             $updateUserSeen = "INSERT INTO UserFileSeen (Userid, Fileid)
+             VALUES ('$rowGetuseridQuery[1]', '$getfileid')";
+
+             if (!mysqli_query($con,$updateUserSeen))
+             {
+                die('Error: ' . mysqli_error($con));
+             }
+          }
+          
        }
 
        else
@@ -91,8 +111,134 @@
             {
                 die('Error: ' . mysqli_error($con));
             }
+
+            $getfileid = "SELECT id FROM savedfiles WHERE Link = '$linkValue'";
+            $getfileidQuery = mysqli_query($con, $getfileid);
+            $rowGetfileidQuery = $getfileidQuery->fetch_array();
+
+            $getuserid = "SELECT id FROM Users WHERE Username = '$username'";
+            $getuseridQuery = mysqli_query($con, $getuserid);
+            $rowGetuseridQuery = $getuseridQuery->fetch_array();
+
+            if ($getuseridQuery->num_rows != 0)
+            {
+                $updateUserSeen = "INSERT INTO UserFileSeen (Userid, Fileid)
+                VALUES ('$rowGetuseridQuery[1]', '$rowGetfileidQuery[1]')";
+
+                if (!mysqli_query($con,$updateUserSeen))
+                {
+                    die('Error: ' . mysqli_error($con));
+                }
+            }
        }
 
+    }
+
+    else if ($_SERVER['HTTP_METHOD'] === 'postRegister')
+    {
+       $body;
+       /*Sometimes the body data is attached in raw form and is not attached 
+       to $_POST, this needs to be handled*/
+       if($_POST == null){
+          $handle  = fopen('php://input', 'r');
+          $rawData = fgets($handle);
+          $body = json_decode($rawData);
+       }
+       else{
+          $body == $_POST;
+       }
+
+       $username = $body->{'Username'};
+       $password = $body->{'Password'};
+
+       $registration = "INSERT INTO Users (Username, Password)
+       VALUES ('$username', '$password')";
+
+       if (!mysqli_query($con,$registration))
+       {
+            die('Error: ' . mysqli_error($con));
+       }
+
+    }
+
+    else if ($_SERVER['HTTP_METHOD'] === 'getIfUserSeen')
+    {
+        $body;
+       /*Sometimes the body data is attached in raw form and is not attached 
+       to $_POST, this needs to be handled*/
+       if($_POST == null){
+          $handle  = fopen('php://input', 'r');
+          $rawData = fgets($handle);
+          $body = json_decode($rawData);
+       }
+       else{
+          $body == $_POST;
+       }
+
+       $username = $body->{'Username'};
+       $linkValue = $body->{'Link'};
+
+       $getuserid = "SELECT id FROM Users WHERE Username = '$username'";
+       $getfileid = "SELECT id FROM savedfiles WHERE Link = '$linkValue'";
+
+       $getuseridQuery = mysqli_query($con, $getuserid);
+       $getfileidQuery = mysqli_query($con, $getfileid);
+       $rowGetuseridQuery = $getuseridQuery->fetch_array();
+       $rowGetfileidQuery = $getfileidQuery->fetch_array();
+
+       $checkifSeen = "SELECT Userid FROM UserFileSeen WHERE Userid = '$rowGetuseridQuery[1]' AND Fileid = '$rowGetfileidQuery[1]'";
+       $checkifSeenQuery = mysqli_query($con, $checkifSeen);
+
+       if ($checkifSeenQuery->num_rows != 0)
+       {
+           echo json_encode("no");
+       }
+
+       else
+       {
+           echo json_encode("update");
+       }
+    }
+
+    else if ($_SERVER['HTTP_METHOD'] === 'getLogin')
+    {
+        $body;
+       /*Sometimes the body data is attached in raw form and is not attached 
+       to $_POST, this needs to be handled*/
+       if($_POST == null){
+          $handle  = fopen('php://input', 'r');
+          $rawData = fgets($handle);
+          $body = json_decode($rawData);
+       }
+       else{
+          $body == $_POST;
+       }
+
+       $username = $body->{'Username'};
+       $password = $body->{'Password'};
+
+       $getUserInfo = "SELECT * From Users Where Username = '$username'";
+       $getUserInfoQuery = mysqli_query($con, $getUserInfo);
+       $row = $getUserInfoQuery->fetch_array();
+
+       if ($getUserInfoQuery->num_rows != 0)
+       {
+           
+           if ($row[2] == $password)
+           {
+               echo json_encode("yes");
+           }
+
+           else
+           {
+               echo json_encode("no");
+           }
+       }
+
+       else
+       {
+           echo json_encode("no");
+       }
     }
 
     else {
